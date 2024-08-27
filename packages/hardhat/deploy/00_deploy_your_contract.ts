@@ -22,23 +22,38 @@ const deployYourContract: DeployFunction = async function (hre: HardhatRuntimeEn
   const { deployer } = await hre.getNamedAccounts();
   const { deploy } = hre.deployments;
 
-  await deploy("YourContract", {
+  const touchTokenDeployment = await deploy("TouchToken", {
     from: deployer,
     // Contract constructor arguments
-    args: [deployer],
+    args: [],
     log: true,
     // autoMine: can be passed to the deploy function to make the deployment process faster on local networks by
     // automatically mining the contract deployment transaction. There is no effect on live networks.
     autoMine: true,
   });
 
-  // Get the deployed contract to interact with it after deploying.
-  const yourContract = await hre.ethers.getContract<Contract>("YourContract", deployer);
-  console.log("👋 Initial greeting:", await yourContract.greeting());
+  // Deploy TouchBadge contract
+  const touchBadgeDeployment = await deploy("TouchBadge", {
+    from: deployer,
+    args: [touchTokenDeployment.address], // Pass the TouchToken address to the TouchBadge constructor
+    log: true,
+    autoMine: true,
+  });
+
+  // Get contract instances
+  const touchToken = await hre.ethers.getContractAt("TouchToken", touchTokenDeployment.address);
+  const touchBadge = await hre.ethers.getContractAt("TouchBadge", touchBadgeDeployment.address);
+
+  console.log("TouchToken address:", await touchToken.getAddress());
+  console.log("TouchBadge address:", await touchBadge.getAddress());
+
+  // Set the TouchBadge contract as a minter for TouchToken
+  await touchToken.setMinter(touchBadge.getAddress(), true);
+  console.log("TouchBadge set as minter for TouchToken");
 };
 
 export default deployYourContract;
 
 // Tags are useful if you have multiple deploy files and only want to run one of them.
 // e.g. yarn deploy --tags YourContract
-deployYourContract.tags = ["YourContract"];
+deployYourContract.tags = ["TouchToken", "TouchBadge"];
